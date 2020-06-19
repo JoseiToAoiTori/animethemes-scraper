@@ -3,3 +3,6 @@ node_modules
 
 # Secrets
 config.json
+
+# Generated JSON file
+theme-data.json
