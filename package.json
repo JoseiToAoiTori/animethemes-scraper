@@ -1,7 +1,7 @@
 {
   "name": "animethemes-scraper",
   "version": "1.0.0",
-  "description": "A shitty script that scrapes AnimeThemes wiki pages and dumps data into a JSON",
+  "description": "A shitty hack script that scrapes AnimeThemes wiki pages and dumps data into a JSON",
   "main": "index.js",
   "author": "JoseiToAoiTori",
   "license": "MIT",
