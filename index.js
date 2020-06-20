@@ -12,6 +12,11 @@ function getThemes (anime, page, mal) {
 	let tableContent = page.split(anime);
 	tableContent.splice(0, 1);
 	tableContent = tableContent.join(anime);
+	while (!tableContent.startsWith('](')) {
+		tableContent = tableContent.split(anime);
+		tableContent.splice(0, 1);
+		tableContent = tableContent.join(anime);
+	}
 	tableContent = tableContent.split('-|:-:|:-:|:-:|:-:|:-:')[1];
 	tableContent = tableContent.split(/\r?\n\r?\n\r?/gm)[0];
 	const themes = tableContent.split(/\r?\n/);
