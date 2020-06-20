@@ -71,5 +71,5 @@ Promise.all(getPageContent).then(pageContent => {
 		}
 	}
 	// eslint-disable-next-line no-sync
-	fs.writeFileSync('./theme-data.json', JSON.stringify(json, null, 1), 'utf-8');
+	fs.writeFileSync('./theme-data.json', JSON.stringify(json), 'utf-8');
 });
