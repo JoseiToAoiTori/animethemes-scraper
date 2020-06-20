@@ -18,11 +18,12 @@ function getThemes (anime, page, mal) {
 	if (themes[0].length === 0) themes.splice(0, 1);
 	for (const theme of themes) {
 		const splitData = theme.split('|');
+		if (!splitData[0]) continue;
 		const opData = splitData[0].split(' ');
 		let opNum;
 		let opName;
 		if (/V[0-9]+/g.test(opData[1])) {
-			opNum = `${opData[0]} ${opData[1]}`;
+			opNum = `${opData[0]}${opData[1].toLowerCase()}`;
 			opData.splice(0, 2);
 			opName = opData.join(' ');
 		} else {
