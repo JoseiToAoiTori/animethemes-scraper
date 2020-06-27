@@ -6,8 +6,9 @@
   "author": "JoseiToAoiTori",
   "license": "MIT",
   "dependencies": {
-    "csv-parse": "^4.10.1",
-    "snoowrap": "^1.21.0"
+    "csv-stringify": "^5.5.0",
+    "snoowrap": "^1.21.0",
+    "superagent": "^5.2.2"
   },
   "devDependencies": {
     "eslint": "^7.2.0",

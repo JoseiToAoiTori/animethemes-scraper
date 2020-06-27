@@ -2,8 +2,61 @@ const Snoowrap = require('snoowrap');
 const config = require('./config.json');
 const r = new Snoowrap(config);
 const fs = require('fs');
+const superagent = require('superagent');
+const stringify = require('csv-stringify');
 
-let csv = '';
+const json = [];
+const records = [];
+
+const showQuerySimple = `query ($id: [Int], $page: Int, $perPage: Int) {
+	Page(page: $page, perPage: $perPage) {
+	  pageInfo {
+		total
+		currentPage
+		lastPage
+	  }
+	  results: media(type: ANIME, idMal_in: $id) {
+		id
+		idMal
+		format
+		startDate {
+		  year
+		}
+		title {
+		  romaji
+		  english
+		  native
+		  userPreferred
+		}
+		coverImage {
+		  large
+		  extraLarge
+		}
+		siteUrl
+	  }
+	}
+  }
+  `;
+
+async function paginatedQuery (query, idArr, page) {
+	try {
+		const response = await superagent
+			.post('https://graphql.anilist.co')
+			.send({
+				query,
+				variables: {
+					id: idArr,
+					page,
+					perPage: 50,
+				},
+			})
+			.set('accept', 'json');
+		const data = response.body;
+		return data;
+	} catch (error) {
+		console.log(error);
+	}
+}
 
 function getThemes (anime, page, mal) {
 	let tableContent = page.split(anime);
@@ -36,14 +89,23 @@ function getThemes (anime, page, mal) {
 		let link = splitData[1].match(/https:\/\/.*\)/gm);
 		if (!link) continue;
 		link = link[0].substring(0, link[0].length - 1);
-		csv += `${anime},${opName},${opNum},${mal},${link}
-`;
+		let malString = mal.match(/\/[0-9]+\//gm)[0];
+		// eslint-disable-next-line radix
+		malString = parseInt(malString.substring(1, malString.length - 1));
+		opName = opName.replace(/"/g, '');
+		json.push({
+			anime,
+			mal: malString,
+			link,
+			opNum,
+			opName,
+		});
 	}
 }
 
 // Execution begins here
 function getPageContent () {
-	r.getSubreddit('animethemes').getWikiPage('2020').content_md.then(pageContent => {
+	r.getSubreddit('animethemes').getWikiPage('2020').content_md.then(async pageContent => {
 		const regex = /###\[(.*)\]\((.*)\)/gm;
 		let m;
 		while ((m = regex.exec(pageContent)) !== null) {
@@ -60,8 +122,44 @@ function getPageContent () {
 			});
 			getThemes(anime, pageContent, mal);
 		}
-		// eslint-disable-next-line no-sync
-		fs.writeFileSync('./theme-data.csv', csv, 'utf-8');
+		const IDs = json.map(entry => entry.mal);
+		const promiseArray = [];
+		let showData = [];
+		let pageNum = 1;
+		const someData = await paginatedQuery(showQuerySimple, IDs, pageNum);
+		showData = [...showData, ...someData.data.Page.results];
+		const lastPage = someData.data.Page.pageInfo.lastPage;
+		pageNum = 2;
+		while (pageNum <= lastPage) {
+		// eslint-disable-next-line no-async-promise-executor
+			promiseArray.push(new Promise(async (resolve, reject) => {
+				try {
+					const returnData = await paginatedQuery(showQuerySimple, IDs, pageNum);
+					resolve(returnData.data.Page.results);
+				} catch (error) {
+					reject(error);
+				}
+			}));
+			pageNum++;
+		}
+		Promise.all(promiseArray).then(finalData => {
+			for (const data of finalData) {
+				showData = [...showData, ...data];
+			}
+			for (const theme of json) {
+				const found = showData.find(show => show.idMal === theme.mal);
+				let englishTitle = '';
+				if (found.title.english) {
+					englishTitle = found.title.english;
+				}
+				records.push([`${found.title.romaji}%${englishTitle}`, theme.opName, found.siteUrl, theme.opNum, theme.link]);
+			}
+			stringify(records, (err, output) => {
+				if (err) console.log(err);
+				// eslint-disable-next-line no-sync
+				fs.writeFileSync('./theme-data.csv', output, 'utf-8');
+			});
+		});
 	});
 }
 
