@@ -6,6 +6,7 @@
   "author": "JoseiToAoiTori",
   "license": "MIT",
   "dependencies": {
+    "csv-parse": "^4.10.1",
     "snoowrap": "^1.21.0"
   },
   "devDependencies": {
