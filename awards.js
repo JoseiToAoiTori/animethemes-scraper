@@ -89,9 +89,11 @@ function getThemes (anime, page, mal) {
 		let link = splitData[1].match(/https:\/\/.*\)/gm);
 		if (!link) continue;
 		link = link[0].substring(0, link[0].length - 1);
-		let malString = mal.match(/\/[0-9]+\//gm)[0];
-		// eslint-disable-next-line radix
-		malString = parseInt(malString.substring(1, malString.length - 1));
+		let malString = 0;
+		if (mal.includes('myanimelist')) {
+			malString = mal.match(/\/[0-9]+/gm)[0];
+			malString = parseInt(malString.substring(1, malString.length), 10);
+		}
 		opName = opName.replace(/"/g, '');
 		json.push({
 			anime,
@@ -122,7 +124,8 @@ function getPageContent () {
 			});
 			getThemes(anime, pageContent, mal);
 		}
-		const IDs = json.map(entry => entry.mal);
+		let IDs = json.map(entry => entry.mal);
+		IDs = [...new Set(IDs)];
 		const promiseArray = [];
 		let showData = [];
 		let pageNum = 1;
@@ -158,6 +161,7 @@ function getPageContent () {
 				if (err) console.log(err);
 				// eslint-disable-next-line no-sync
 				fs.writeFileSync('./theme-data.csv', output, 'utf-8');
+				console.log('Successfully generated CSV');
 			});
 		});
 	});

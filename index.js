@@ -3,10 +3,61 @@ const config = require('./config.json');
 const pages = require('./pages.json');
 const r = new Snoowrap(config);
 const fs = require('fs');
+const superagent = require('superagent');
 
 const getPageContent = [];
 
 const json = [];
+
+const showQuerySimple = `query ($id: [Int], $page: Int, $perPage: Int) {
+	Page(page: $page, perPage: $perPage) {
+	  pageInfo {
+		total
+		currentPage
+		lastPage
+	  }
+	  results: media(type: ANIME, idMal_in: $id) {
+		id
+		idMal
+		format
+		startDate {
+		  year
+		}
+		title {
+		  romaji
+		  english
+		  native
+		  userPreferred
+		}
+		coverImage {
+		  large
+		  extraLarge
+		}
+		siteUrl
+	  }
+	}
+  }
+  `;
+
+async function paginatedQuery (query, idArr, page) {
+	try {
+		const response = await superagent
+			.post('https://graphql.anilist.co')
+			.send({
+				query,
+				variables: {
+					id: idArr,
+					page,
+					perPage: 50,
+				},
+			})
+			.set('accept', 'json');
+		const data = response.body;
+		return data;
+	} catch (error) {
+		console.log(error);
+	}
+}
 
 function getThemes (anime, page, mal) {
 	let tableContent = page.split(anime);
@@ -39,9 +90,15 @@ function getThemes (anime, page, mal) {
 		let link = splitData[1].match(/https:\/\/.*\)/gm);
 		if (!link) continue;
 		link = link[0].substring(0, link[0].length - 1);
+		let malID;
+		if (mal.includes('myanimelist')) {
+			malID = mal.match(/\/[0-9]+/gm)[0];
+			malID = parseInt(malID.substring(1, malID.length), 10);
+		}
+		opName = opName.replace(/"/g, '');
 		json.push({
 			anime,
-			mal,
+			malID,
 			link,
 			opNum,
 			opName,
@@ -54,7 +111,7 @@ for (const page of pages) {
 	getPageContent.push(r.getSubreddit('animethemes').getWikiPage(page).content_md);
 }
 
-Promise.all(getPageContent).then(pageContent => {
+Promise.all(getPageContent).then(async pageContent => {
 	for (const page of pageContent) {
 		const regex = /###\[(.*)\]\((.*)\)/gm;
 		let m;
@@ -75,6 +132,40 @@ Promise.all(getPageContent).then(pageContent => {
 			getThemes(anime, page, mal);
 		}
 	}
-	// eslint-disable-next-line no-sync
-	fs.writeFileSync('./theme-data.json', JSON.stringify(json), 'utf-8');
+	let IDs = json.map(entry => entry.malID);
+	IDs = [...new Set(IDs)];
+	const promiseArray = [];
+	let showData = [];
+	let pageNum = 1;
+	const someData = await paginatedQuery(showQuerySimple, IDs, pageNum);
+	showData = [...showData, ...someData.data.Page.results];
+	const lastPage = someData.data.Page.pageInfo.lastPage;
+	pageNum = 2;
+	while (pageNum <= lastPage) {
+		// eslint-disable-next-line no-async-promise-executor
+		promiseArray.push(new Promise(async (resolve, reject) => {
+			try {
+				const returnData = await paginatedQuery(showQuerySimple, IDs, pageNum);
+				resolve(returnData.data.Page.results);
+			} catch (error) {
+				reject(error);
+			}
+		}));
+		pageNum++;
+	}
+	Promise.all(promiseArray).then(finalData => {
+		for (const data of finalData) {
+			showData = [...showData, ...data];
+		}
+		for (const theme of json) {
+			const found = showData.find(show => show.idMal === theme.malID);
+			if (found) {
+				theme.anime = found.title;
+			}
+			delete theme.malID;
+		}
+		// eslint-disable-next-line no-sync
+		fs.writeFileSync('./theme-data.json', JSON.stringify(json), 'utf-8');
+		console.log('Successfully scraped themes');
+	});
 });
