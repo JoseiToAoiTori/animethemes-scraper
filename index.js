@@ -29,6 +29,7 @@ const showQuerySimple = `query ($id: [Int], $page: Int, $perPage: Int) {
 		  native
 		  userPreferred
 		}
+		synonyms
 		coverImage {
 		  large
 		  extraLarge
@@ -161,6 +162,7 @@ Promise.all(getPageContent).then(async pageContent => {
 			const found = showData.find(show => show.idMal === theme.malID);
 			if (found) {
 				theme.anime = found.title;
+				theme.synonyms = found.synonyms;
 			}
 			delete theme.malID;
 		}
