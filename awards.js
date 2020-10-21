@@ -152,10 +152,14 @@ function getPageContent () {
 			for (const theme of json) {
 				const found = showData.find(show => show.idMal === theme.mal);
 				let englishTitle = '';
-				if (found.title.english) {
-					englishTitle = found.title.english;
+				if (found) {
+					if (found.title.english) {
+						englishTitle = found.title.english;
+					}
+					records.push([`${found.title.romaji}%${englishTitle}`, theme.opName, found.siteUrl, theme.opNum, theme.link]);
+				} else {
+					console.log(`${theme.anime} ${theme.opNum}`);
 				}
-				records.push([`${found.title.romaji}%${englishTitle}`, theme.opName, found.siteUrl, theme.opNum, theme.link]);
 			}
 			stringify(records, (err, output) => {
 				if (err) console.log(err);
